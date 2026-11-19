@@ -1,0 +1,23 @@
+name: Public beta clean install
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install published tag into a fresh environment
+        run: |
+          python -m venv "$RUNNER_TEMP/beta"
+          "$RUNNER_TEMP/beta/bin/pip" install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          "$RUNNER_TEMP/beta/bin/pip" install "git+https://github.com/A5omics/serve-model-beta.git@v0.1.0b1"
+      - name: Export from installed CLI and call the container over HTTP
+        working-directory: ${{ runner.temp }}
+        run: |
+          "$RUNNER_TEMP/beta/bin/serve-model" bundle sample --service smoke-pilot --out container
+          python "$GITHUB_WORKSPACE/tests/container_smoke.py"
