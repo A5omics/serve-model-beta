@@ -1,6 +1,6 @@
 import argparse
 import hashlib
-import hmac
+import sys
 import json
 import os
 from pathlib import Path
@@ -68,6 +68,7 @@ def main():
     for name in ("deploy", "bundle"):
         sub = commands.add_parser(name)
         sub.add_argument("adapter", help="Path to your adapter or 'sample'")
+        sub.add_argument("--json", action="store_true", help="Print a machine-readable result on stdout")
         sub.add_argument("--service", default="serve-model")
         if name == "deploy":
             sub.add_argument("--project", required=True, help="Your Google Cloud project ID")
@@ -107,10 +108,10 @@ def main():
         expected = bundle(adapter,stage,key)
         if args.command == "bundle":
             shutil.copytree(stage,args.out)
-            print("Container build context:",args.out)
+            result = {"action":"bundle","directory":str(args.out.resolve())}
         else:
             subprocess.run(["gcloud","run","deploy",args.service,"--project",project,"--region",region,"--source",str(stage),
-                            "--allow-unauthenticated","--min-instances","0","--max-instances","2","--memory","1Gi","--concurrency","4","--quiet"],check=True)
+                            "--allow-unauthenticated","--min-instances","0","--max-instances","2","--memory","1Gi","--concurrency","4","--quiet"],check=True,stdout=sys.stderr)
             origin = subprocess.check_output(["gcloud","run","services","describe",args.service,"--project",project,
                            "--region",region,"--format=value(status.url)"],text=True).strip()
             if not origin.startswith("https://") or not origin.endswith(".run.app"):
@@ -120,5 +121,6 @@ def main():
             if args.domain:
                 endpoint = "https://"+args.domain+"/predict"
                 check_url(endpoint,key,expected)
-            print("Verified endpoint:",endpoint)
-    print("Bearer key file:",keypath)
+            result = {"action":"deploy","endpoint":endpoint,"parity_verified":True,"anonymous_status":401}
+    result["key_file"] = str(keypath)
+    print(json.dumps(result) if args.json else "\n".join(f"{k}: {v}" for k,v in result.items()))

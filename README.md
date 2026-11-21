@@ -2,13 +2,15 @@
 
 Turn a PEFT sequence-classification adapter into a private-key inference endpoint. The endpoint runs in your own Google Cloud project. You can also export the same container for another host.
 
+**Agent quickstart:** [Deployment contract and machine-readable commands](llms.txt). Deploy PEFT LoRA BERT-tiny sequence classifiers to a bearer-authenticated HTTPS prediction API, or export a Docker image build context with ONNX inference.
+
 ## Install
 
 Use Python 3.10–3.12 in a virtual environment. This beta bundles a pinned Google BERT base and a small demonstration adapter. Installation downloads PyTorch and the ONNX export tools.
 
     python3.10 -m venv .venv
     source .venv/bin/activate
-    python -m pip install "git+https://github.com/A5omics/serve-model-beta.git@v0.1.0b1"
+    python -m pip install "git+https://github.com/A5omics/serve-model-beta.git@v0.1.0b2"
 
 ## Deploy
 
@@ -37,6 +39,8 @@ POST to http://127.0.0.1:8080/predict with the bearer key. The build context con
 
 ## Adapter contract
 
-Supported base: google/bert_uncased_L-2_H-128_A-2, revision 30b0a37ccaaa32f332884b96992754e246e48c5f. Supply adapter_config.json, adapter_model.safetensors (LoRA SEQ_CLS with classifier head), and labels.json, an ordered list of class names. Examples: ["billing", "technical"]. Inputs truncate to 512 tokens. The sample was trained on 36 synthetic support messages. No accuracy or uptime SLA is claimed.
+Also supported: prajjwal1/bert-tiny at revision 6f75de8b60a9f8a2fdf7b69cbd86d9e64bcb3837. Its base weights download on first use. Adapters can supply ordered class names via config.json id2label.
+
+Bundled base: google/bert_uncased_L-2_H-128_A-2, revision 30b0a37ccaaa32f332884b96992754e246e48c5f. Supply adapter_config.json, adapter_model.safetensors (LoRA SEQ_CLS with classifier head), and labels.json, an ordered list of class names. Examples: ["billing", "technical"]. Inputs truncate to 512 tokens. The sample was trained on 36 synthetic support messages. No accuracy or uptime SLA is claimed.
 
 The [base model](https://huggingface.co/google/bert_uncased_L-2_H-128_A-2) and its license are included. To stop a Cloud Run deployment, delete its service in your project and remove unneeded build images separately.

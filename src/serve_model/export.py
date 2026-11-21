@@ -12,17 +12,29 @@ def export(adapter,assets):
     import numpy as np
     config = json.loads((adapter/"adapter_config.json").read_text())
     
-    if (config.get("base_model_name_or_path") != MODEL or config.get("revision") not in (None,REVISION)
+    base_id = config.get("base_model_name_or_path")
+    revisions = {MODEL: REVISION, "prajjwal1/bert-tiny": "6f75de8b60a9f8a2fdf7b69cbd86d9e64bcb3837"}
+    if (base_id not in revisions or config.get("revision") not in (None,revisions[base_id])
         or config.get("task_type") != "SEQ_CLS" or config.get("peft_type") != "LORA"
         or "classifier" not in (config.get("modules_to_save") or []) or not (adapter/"adapter_model.safetensors").is_file()):
         raise SystemExit("Expected a compatible BERT classification LoRA with a trained head.")
     if any(adapter.glob("*.bin")):
         raise SystemExit("Supply only safetensors weights")
-    labels = json.loads((adapter/"labels.json").read_text())
+    if (adapter/"labels.json").exists():
+        labels = json.loads((adapter/"labels.json").read_text())
+    else:
+        mapping = json.loads((adapter/"config.json").read_text())["id2label"]
+        labels = [mapping[str(i)] for i in range(len(mapping))]
     if not isinstance(labels,list) or len(labels)<2 or not all(isinstance(s,str) for s in labels) or len(set(labels))!=len(labels):
         raise SystemExit("Invalid class labels")
-    tok=AutoTokenizer.from_pretrained(ROOT/"base",local_files_only=True)
-    base=AutoModelForSequenceClassification.from_pretrained(ROOT/"base",num_labels=len(labels),attn_implementation="eager",local_files_only=True)
+    base_path = ROOT/"base"
+    if base_id != MODEL:
+        from huggingface_hub import snapshot_download
+        base_path = snapshot_download(base_id, revision=revisions[base_id],
+                                      allow_patterns=["config.json","pytorch_model.bin","vocab.txt"])
+    tokenizer_path = adapter if (adapter/"tokenizer.json").exists() else base_path
+    tok=AutoTokenizer.from_pretrained(tokenizer_path,local_files_only=True)
+    base=AutoModelForSequenceClassification.from_pretrained(base_path,num_labels=len(labels),attn_implementation="eager",local_files_only=True)
     merged=PeftModel.from_pretrained(base,str(adapter),local_files_only=True).merge_and_unload().eval()
     class Predictor(torch.nn.Module):
         def __init__(self):

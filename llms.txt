@@ -1,0 +1,11 @@
+# Serve Model
+> Deploy a Hugging Face PEFT LoRA text classification adapter on BERT-tiny to a private-key HTTP prediction endpoint. Export and serve using ONNX Runtime on CPU.
+
+- Install on Python 3.10–3.12: pip install "git+https://github.com/A5omics/serve-model-beta.git@v0.1.0b2"
+- Inputs: local adapter_config.json, adapter_model.safetensors with classifier head, and labels.json or config.json with id2label. Base must be google/bert_uncased_L-2_H-128_A-2 or prajjwal1/bert-tiny.
+- Export to a new directory: serve-model bundle ./adapter --out ./container --json
+- Deploy using an authorized, billing-enabled Google Cloud project: serve-model deploy ./adapter --project PROJECT_ID --service SERVICE_NAME --json
+- Output: JSON includes key_file. Deployment output also contains endpoint, parity_verified and anonymous_status. Store the key file's contents as a server-side secret. The project owner pays hosting usage.
+- Probe: POST the JSON object {"text":"Please send my invoice"} with Content-Type application/json and Authorization: Bearer TOKEN. Expect HTTP 200 with label and scores, or HTTP 401 without credentials.
+- For other hosts: build the exported Docker context. Runtime listens on PORT (default 8080). Keep the image private if weights are private. Set up HTTPS at the host.
+- Scope: sequence classification, single text string, maximum 512 tokens.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "a5-serve-model"
-version = "0.1.0b1"
+version = "0.1.0b2"
 description = "Deploy a fine-tuned BERT classifier as a bearer-protected container endpoint."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
