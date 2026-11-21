@@ -9,6 +9,7 @@ import secrets
 import shutil
 import subprocess
 import tempfile
+from contextlib import contextmanager
 import urllib.error
 import urllib.request
 
@@ -61,11 +62,32 @@ def check_url(url, key, expected):
             raise SystemExit("Remote prediction differs from the local model.")
 
 
+@contextmanager
+def local_endpoint(stage):
+    # Pass a pre-bound loopback socket so the OS can allocate a free port safely.
+    import socket
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        port = listener.getsockname()[1]
+        process = subprocess.Popen(
+            [sys.executable, str(stage/"handler.py")],
+            env={**os.environ, "SERVE_LISTEN_FD": str(listener.fileno())},
+            pass_fds=(listener.fileno(),), stdout=sys.stderr,
+        )
+        try:
+            yield f"http://127.0.0.1:{port}/predict", process
+        finally:
+            if process.poll() is None:
+                process.terminate()
+            process.wait()
+
+
 def main():
     p = argparse.ArgumentParser(prog="serve-model")
     commands = p.add_subparsers(dest="command", required=True)
     commands.add_parser("sample", help="Print the bundled sample adapter path")
-    for name in ("deploy", "bundle"):
+    for name in ("deploy", "bundle", "local"):
         sub = commands.add_parser(name)
         sub.add_argument("adapter", help="Path to your adapter or 'sample'")
         sub.add_argument("--json", action="store_true", help="Print a machine-readable result on stdout")
@@ -74,7 +96,7 @@ def main():
             sub.add_argument("--project", required=True, help="Your Google Cloud project ID")
             sub.add_argument("--region", default="us-central1")
             sub.add_argument("--domain", help="Existing HTTPS hostname already routed to this service")
-        else:
+        elif name == "bundle":
             sub.add_argument("--out", required=True, type=Path)
     args = p.parse_args()
     if args.command == "sample":
@@ -106,6 +128,19 @@ def main():
     with tempfile.TemporaryDirectory() as temp:
         stage = Path(temp)
         expected = bundle(adapter,stage,key)
+        if args.command == "local":
+            with local_endpoint(stage) as (endpoint, process):
+                check_url(endpoint, key, expected)
+                receipt = {"action":"local","endpoint":endpoint,"key_file":str(keypath),
+                           "parity_verified":True,"anonymous_status":401}
+                print(json.dumps(receipt), flush=True)
+                try:
+                    returncode = process.wait()
+                except KeyboardInterrupt:
+                    return
+                if returncode:
+                    raise SystemExit(returncode)
+                return
         if args.command == "bundle":
             shutil.copytree(stage,args.out)
             result = {"action":"bundle","directory":str(args.out.resolve())}

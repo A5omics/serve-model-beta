@@ -61,4 +61,12 @@ if __name__ == "__main__":
     import os
     from http.server import ThreadingHTTPServer
     engine()  # Fail startup before accepting requests if the artifact is invalid.
-    ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("PORT", "8080"))), handler).serve_forever()
+    if "SERVE_LISTEN_FD" in os.environ:
+        import socket
+        server = ThreadingHTTPServer(("127.0.0.1", 0), handler, bind_and_activate=False)
+        server.socket.close()
+        server.socket = socket.socket(fileno=int(os.environ["SERVE_LISTEN_FD"]))
+        server.server_address = server.socket.getsockname()
+    else:
+        server = ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("PORT", "8080"))), handler)
+    server.serve_forever()

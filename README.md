@@ -10,7 +10,7 @@ Use Python 3.10–3.12 in a virtual environment. This beta bundles a pinned Goog
 
     python3.10 -m venv .venv
     source .venv/bin/activate
-    python -m pip install "git+https://github.com/A5omics/serve-model-beta.git@v0.1.0b2"
+    python -m pip install "git+https://github.com/A5omics/serve-model-beta.git@v0.1.0b3"
 
 ## Deploy
 
@@ -44,3 +44,7 @@ Also supported: prajjwal1/bert-tiny at revision 6f75de8b60a9f8a2fdf7b69cbd86d9e6
 Bundled base: google/bert_uncased_L-2_H-128_A-2, revision 30b0a37ccaaa32f332884b96992754e246e48c5f. Supply adapter_config.json, adapter_model.safetensors (LoRA SEQ_CLS with classifier head), and labels.json, an ordered list of class names. Examples: ["billing", "technical"]. Inputs truncate to 512 tokens. The sample was trained on 36 synthetic support messages. No accuracy or uptime SLA is claimed.
 
 The [base model](https://huggingface.co/google/bert_uncased_L-2_H-128_A-2) and its license are included. To stop a Cloud Run deployment, delete its service in your project and remove unneeded build images separately.
+
+## Try the app integration locally
+
+On Linux or macOS run `serve-model local sample` in a foreground terminal. After export and a reference prediction check it emits one JSON receipt with the loopback URL and key-file path. Call the URL from another process. Ctrl-C stops the service. See the [support classifier model card](src/serve_model/sample/README.md) for the request format.

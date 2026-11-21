@@ -15,7 +15,7 @@ jobs:
         run: |
           python -m venv "$RUNNER_TEMP/beta"
           "$RUNNER_TEMP/beta/bin/pip" install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
-          "$RUNNER_TEMP/beta/bin/pip" install "git+https://github.com/A5omics/serve-model-beta.git@v0.1.0b2"
+          "$RUNNER_TEMP/beta/bin/pip" install "git+https://github.com/A5omics/serve-model-beta.git@v0.1.0b3"
       - name: Export from installed CLI and call the container over HTTP
         working-directory: ${{ runner.temp }}
         run: |
